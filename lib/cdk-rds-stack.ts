@@ -1,16 +1,36 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { DatabaseInstance, DatabaseInstanceEngine, PostgresEngineVersion } from 'aws-cdk-lib/aws-rds';
+import { Vpc, InstanceType, InstanceSize, InstanceClass } from 'aws-cdk-lib/aws-ec2';
+
 
 export class CdkRdsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const vpc = new Vpc(this, 'BackstageVpc', {
+      cidr: '10.192.0.0/16',
+      maxAzs: 2,
+      natGateways: 1,
+      enableDnsHostnames: true,
+      enableDnsSupport: true
+    });
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'CdkRdsQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    const engine = DatabaseInstanceEngine.postgres({ version: PostgresEngineVersion.VER_13_5 });
+    
+    const dbInstance = new DatabaseInstance(this, 'Backstage_Postgres_CDK', {
+      engine,
+      vpc,
+      iamAuthentication: true,
+      instanceType: InstanceType.of(
+        InstanceClass.BURSTABLE3,
+        InstanceSize.MICRO
+      ),
+      databaseName: 'backstage_postgress'
+    });
+
+    new CfnOutput(this, 'dbEndpoint', {
+      value: dbInstance.instanceEndpoint.hostname,
+    });
   }
 }
